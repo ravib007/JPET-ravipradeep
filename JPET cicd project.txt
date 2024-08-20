@@ -1,0 +1,194 @@
+CICD PROJECT -- JPET STORE
+
+Launch instance 
+Name : JenkinsMaster
+os : Amazon-linux 
+ami : n-1 version
+instance type : t2.medium
+keypair : jen123
+security groups: alltcp
+configuration storage : 30gb
+click - launch instance
+
+putty configuration :
+ec2-user
+sudo yum update
+sudo -i
+```````````````````````````````
+vi jenkins.sh
+
+insert i: 
+```````
+(jenkins works in java)
+
+#java installation:
+yum install java -y
+
+#Jenkins installation :
+sudo wget -O /etc/yum.repos.d/jenkins.repo     https://pkg.jenkins.io/redhat-stable/jenkins.repo
+sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+yum upgrade -y
+yum update -y
+yum install jenkins  -y
+systemctl daemon-reload
+systemctl enable jenkins
+systemctl start jenkins
+systemctl status jenkins
+
+save the file :wq!
+------------------
+
+
+chmod +x jenkins.sh
+./jenkins.sh start
+
+hit the public ip address : http://35.72.14.142:8080/
+
+Jenkins dashboard : unlock jenkins 
+-----------------------------------
+
+copy the key  : /var/lib/jenkins/secrets/initialAdminPassword
+
+paste the terminal : cat /var/lib/jenkins/secrets/initialAdminPassword
+61ca5170965745d68c5ca4e9a4f2d1a8
+
+jenkins dashboard : paste the key : 61ca5170965745d68c5ca4e9a4f2d1a8
+
+customised jenkins : install suggested plugins 
+
+
+create first admin user:
+```````````````````
+username: admin
+password: admin
+confirm password: admin
+name : RAVI KUMAR B
+Email : ravimca2012@gmail.com
+
+save and finish -start jenkins dashboard page
+
+jenkins ready ! : Start using jenkins
+
+
+vi packages.sh
+
+insert i:
+
+# DOCKER INSTALLATION
+yum update -y
+yum install docker -y
+systemctl enable docker
+systemctl start docker
+systemctl status docker
+docker --version
+
+#GIT INSTALLATION
+yum update -y
+yum install git -y
+git --version
+
+#MAVEN INSTALLATION
+yum update -y
+yum install maven -y
+mvn -v
+
+save the file :wq!
+--------------------
+chmod +x packages.sh
+./packages.sh start
+
+
+mvn -v
+docker --version
+git --version 
+
+systemctl status docker
+
+
+Jenkins dashboard --> manage plugins --> plugins --> available plugins
+
+1. Eclipse Temurin Installer
+2. SonarQube ScannerVersion 17.2
+3. maven integration
+4. OWASP  dependency check
+5. OWASP dependency track
+
+jenkins dashboard - create a new job
+
+Name : jpet
+item : pipeline 
+click -ok
+
+configuration: 
+
+description : Development 
+git hub project : https://github.com/ravib007/jpetstore-6.git
+
+click : apply -save
+run the job : Click Build now
+
+goto github page : settings : webhooks -- add webhook 
+
+payload url :http://35.72.14.142:8080/github-webhook/
+click - addwebhook -- refresh the page
+
+copy the script  
+select the job JPET --> configure --> 
+git hub : https://github.com/ravib007/jpetstore-6.git
+
+script :
+```````
+
+pipeline{
+    agent any
+    tools {
+        
+        maven 'maven3'  # which name is updated in global tool configuration for maven given same name 
+    }
+    stages{
+        stage ('clean Workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        stage ('checkout scm') {
+            steps {
+                git 'https://github.com/Aj7Ay/jpetstore-6.git'
+            }
+        }
+        stage ('maven compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        stage ('maven Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+   }
+}
+
+
+-- run the job
+
+
+jenkins dashboard -- add tools - global tool configuration --add maven with name and version mentioned in pipeline script job 
+manage jenkins -- tools --maven installation
+add maven
+name : maven3
+install automatically : version 3.6.0
+
+click -- save --apply
+
+
+
+
+
+
+
+
+
+
+
+

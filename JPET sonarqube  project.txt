@@ -1,0 +1,340 @@
+Sonar qube : old version Installation  (Long term support version )
+``````````````````````````````````````````````````````
+
+Launch instance
+Name : sonarqube
+os : Amazon- linux
+ami : n-1 version
+instance type: t2.medium
+key pair : sonar123
+security groups : All-tcp
+configuration storage : 30gb 
+click : launch instance 
+
+putty configuration :
+ec2-user
+sudo yum update -y
+sudo -i
+
+
+## Login as root and execute the following commands
+``````````````````````````````````````````````
+sysctl vm.max_map_count
+sysctl fs.file-max
+ulimit -n
+ulimit -u
+-----------------------------
+sudo vi /etc/sysctl.conf
+
+insert i: 
+#add this end of the line
+ ```````````````````
+vm.max_map_count=262144
+fs.file-max=65536
+
+save the file : wq!
+----------------------------
+sudo vi /etc/security/limits.conf
+
+insert : i 
+#add this on end of the line
+```````````````````````
+sonarqube soft nofile 65536
+sonarqube hard nofile 65536
+sonarqube soft nproc 4096
+sonarqube hard nproc 4096
+
+save the file : wq!
+---------------------------------
+
+# Reload changes
+```````````````
+sudo sysctl -p
+------------------------
+
+# postgres10 installation 
+````````````````````
+amazon-linux-extras install postgresql10 vim epel -y
+yum install -y postgresql-server postgresql-devel
+/usr/bin/postgresql-setup --initdb
+------------------------------------------
+# change configuration in postgres path
+````````````````````````````````
+vi /var/lib/pgsql/data/pg_hba.conf
+
+insert i :
+
+#Replace Method name "peer" to "md5
+````````````````````````````````
+ex:  host   all             all                   127.0.0.1/32                   peer change to md5
+
+save the file :wq!
+--------------------------------------
+# enable and start postgres
+```````````````````````
+systemctl enable postgresql
+systemctl start postgresql
+
+#login into database
+`````````````````
+su - postgres
+psql
+
+#create database
+```````````````
+create database sonarqubedb;         #customize your db name
+
+#create user with strong paswword
+````````````````````````````
+create user sonarqube with encrypted password 'Cloud#436';   #customize your password
+
+# grant permission to all privileges to sonrqube user on sonarqubedb   #add it your db name if you create another db name  
+`````````````````````````````````````````````````````````
+grant all privileges on database sonarqubedb to sonarqube;
+
+\list
+\c (dbname) sonarqubedb
+
+exit the psql prompt
+``````````````````
+\q
+
+Switch to your sudo user using the exit command
+````````````````````````````````````````
+exit
+
+
+# java and sonarqube installation
+#Install Java 17 as the root user
+````````````````````````````
+wget https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.rpm
+
+rpm -i jdk-17_linux-x64_bin.rpm
+
+
+#sonarqube installation
+````````````````````
+cd /opt
+
+sudo wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.9.1.69595.zip
+
+# unzip sonarqube
+```````````````
+sudo unzip sonarqube-9.9.1.69595.zip
+
+# if you rename the fie sonarqube-9.9.1.69595.zip      (optional)
+``````````````````````````````````````````
+sudo mv sonarqube-9.9.1.69595.zip sonarqube
+
+Create a user and add it as owner to opt/sonarqube-9.9.1.69595 folder
+``````````````````````````````````````````````````````````
+sudo useradd sonaradmin
+sudo chown -R sonaradmin:sonaradmin sonarqube-9.9.1.69595    <---#add it your new change sonarname 
+
+
+#Navigate to the start script directory
+```````````````````````````````
+sudo vi /opt/sonarqube-9.9.1.69595/conf/sonar.properties
+
+insert i :
+#give database credentials in sonar.properties
+````````````````````````````````````
+
+sonar.jdbc.username=sonarqube
+sonar.jdbc.password=ravi@123
+sonar.jdbc.url=jdbc:postgresql://localhost/sonarqubedb
+sonar.web.host=0.0.0.0
+sonar.web.port=9000    #change the port if you need  (9100)   
+
+save the file :wq!
+--------------------------------------
+#Switch as sonaradmin user
+```````````````````````
+
+su sonaradmin
+
+#Start the sonar
+```````````````
+
+sh /opt/sonarqube-9.9.1.69595/bin/linux-x86-64/sonar.sh start
+sh /opt/sonarqube-9.9.1.69595/bin/linux-x86-64/sonar.sh status
+
+sh /opt/sonarqube-9.9.1.69595/bin/linux-x86-64/sonar.sh restart
+
+
+hit the public ip address : http://43.207.67.218:9000/
+
+dashboard 
+username :admin
+password : admin
+
+reset password 
+old password : admin
+new password :ravi 
+confirm password : ravi 
+
+logout and login 
+username : admin
+password : ravi
+
+--------------------------------
+
+
+profile --> administrator -->  security --> user --> tokens
+
+Name :pradeep
+type : user Token
+expires in :no expiry
+click : generate
+
+copy the token and paste here :
+squ_8936b7a06866479d27e438dd18f62fdb8535ac0d
+
+Jenkins dashboard --> manage jenkins --> credentials --> 
+store scoped to jenkins
+
+store : system
+domain : global
+
+click : global --> add credentials
+
+new credentials
+
+kind : secret text
+scope : global (jenkins, nodes. items, all childs items etc)
+secret :squ_8936b7a06866479d27e438dd18f62fdb8535ac0d (sonar token paste here)
+id :sonartoken
+description :sonartoken
+click : create
+
+jenkins dashboard --> manage jenkins --> system  
+
+sonarqube servers :
+tick : environment variables
+
+Sonarqube installations
+Name:sonar-server
+server url:http://13.114.67.135:9000/
+server authentication token : sonartoken (select)
+click --> apply--> save
+
+
+Jenkins dashboard --> manage jenkins --> tools 
+sonarqube scanner installation
+
+Name : sonar-scanner
+version  :SonarQube Scanner 5.0.1.3006 
+click --> apply--> save
+
+
+Edit the script :   ( copy and paste select all code )
+``````````````
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven3'  // The name defined in the global tool configuration for Maven
+    }
+    
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+    
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        
+        stage('Checkout SCM') {
+            steps {
+                git 'https://github.com/Aj7Ay/jpetstore-6.git'
+            }
+        }
+        
+        stage('Maven Compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        
+        stage('Maven Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=Petshop \
+                        -Dsonar.java.binaries=. \
+                        -Dsonar.projectKey=Petshop'''
+                }
+            }
+        }
+    }
+}
+--------------------------------------------------
+
+job build and check status -- success
+
+
+sonarqube dashboard --> project --> (petshop) project name --> click bugs --> click code 
+--> shown folder wise bugs (ex. 66)--> click home page(sonarqube)
+
+goto terminal:
+
+su - postgres
+psql
+\list
+sonarqube
+\c sonarqube 
+\list
+
+
+
+
+SELECT * FROM projects WHERE name = ' Petshop';
+
+
+SELECT * FROM Petshop
+WHERE uuid = (SELECT id FROM Petshop WHERE uuid = 'AZFu2ZOqFEigjgfTlSqM';
+
+SELECT uuid FROM projects WHERE name = 'Petshop';
+
+
+SELECT i.kee AS issue_key, i.severity, i.message, i.status, c.path AS component_path
+FROM issues i
+JOIN components c ON i.component_uuid = c.uuid
+WHERE i.project_uuid = 'AZFu2ZOqFEigjgfTlSqM';
+
+147 rows detected
+
+
+sudo chmod 755 /home/ec2-user/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
