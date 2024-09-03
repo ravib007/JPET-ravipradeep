@@ -1,0 +1,165 @@
+CICD PROJECT :KOPS INSTALLATION 
+
+Launch instance
+
+Name: JENKINS
+os : amazon linux
+ami : latest version
+instance type : t3.medium
+keypair : jenkins123
+security group : Alltcp
+configuration storage : 30GB
+click :Launch instance
+
+
+Route 53:
+```````
+route 53 ->get started
+choose : create a hosted zone --get started
+
+Domain name :raviawsdevops.shop
+Description : development
+type : public
+click : create hostedzone
+
+godaddy : my product -- domain -- dns  -- nameservers - edit nameservers
+ns-1687.awsdns-18.co.uk
+ns-251.awsdns-31.com
+ns-1400.awsdns-47.org
+ns-591.awsdns-09.net
+click - save 
+
+
+IAM ROLE :
+`````````
+
+create role --> aws service 
+usecase :EC2 - next
+permission : admin access -next
+ role name : kops-role
+descritpion: default
+click : create role
+
+
+Create s3 bucket
+``````````````
+Aws region : eu-north-1
+bucket type : general
+bucket name : kubes-bucket
+object ownership :acl denied
+block public access : default
+bucket version : enabled
+tags : default
+encryption type : default
+bucket key : enable
+click--> create bucket
+
+Modify IAM Role :
+``````````````
+
+(select)goto kops instance --actions -- security -- modify iam role-kops-role -- updated
+
+
+putty configuration :
+ec2-user
+sudo yum update -y
+sudo -i
+
+
+Install Kops :
+```````````
+sudo -i
+yum update
+curl -Lo kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+chmod +x kops
+sudo mv kops /usr/local/bin/kops
+yum update -y
+kops version
+
+
+Kubectl install :
+`````````````
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+  
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+chmod +x kops
+sudo mv kubectl /usr/local/bin/kubectl
+yum update -y
+kubectl version
+
+
+create sshkeys
+`````````````
+ssh-keygen -f .ssh/id_rsa   ( 3 enters)
+
+to set environment variables for state store
+````````````````````````````````````
+vi ~/.bashrc
+
+insert i :
+
+export KOPS_STATE_STORE=s3://kubes-bucket
+alias ku='kubectl'
+
+save the file : wq!
+
+------------------------------
+
+reload the change
+````````````````
+source ~/.bashrc
+
+``````````````````
+
+
+create cluster :
+```````````
+kops create cluster --name=raviawsdevops.shop --state=s3://kubes-bucket  --zones=eu-north-1a --node-count=2 --node-size=t3.medium --control-plane-size=t3.medium --dns-zone=raviawsdevops.shop
+
+update :
+```````
+ kops update cluster --name raviawsdevops.shop --yes --admin
+
+validate :
+````````
+kops validate cluster --wait 10m
+
+kops validate cluster 
+ku get nodes
+
+
+Instance page :
+````````````
+select kops : security --> security groups --> edit inbound rules --> 
+
+type              protocol      portrange      source          search 
+custom tcp       tcp              6443        anywhere     0.0.0.0/0    -- save rules
+
+
+
+kops validate cluster 
+ku get nodes
+kops export kubeconfig --admin
+kops validate cluster 
+ku get nodes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
